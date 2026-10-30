@@ -1,6 +1,32 @@
 import React, { useState, useEffect } from 'react';
 
 export default function App() {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const auth = localStorage.getItem('rapid_admin_auth');
+      return auth ? JSON.parse(auth).authenticated === true : false;
+    } catch {
+      return false;
+    }
+  });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const auth = localStorage.getItem('rapid_admin_auth');
+      return auth ? JSON.parse(auth).user : { username: 'admin', name: 'Administrador General' };
+    } catch {
+      return { username: 'admin', name: 'Administrador General' };
+    }
+  });
+
+  // Login Form State
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Dashboard Tabs & Data
   const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' | 'consumers' | 'database'
   const [products, setProducts] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -61,8 +87,85 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
+
+  // Handle Login Submission
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setIsSubmitting(true);
+
+    try {
+      // Try backend authentication endpoint
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput, password: passwordInput })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const authData = {
+          authenticated: true,
+          token: data.token,
+          user: data.user,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('rapid_admin_auth', JSON.stringify(authData));
+        setCurrentUser(data.user);
+        setIsAuthenticated(true);
+        showToast('¡Bienvenido al Panel de Control de Hamburger Rapid!');
+      } else {
+        // Fallback validation for offline / strict match
+        if (usernameInput === 'admin' && passwordInput === 'admin') {
+          const authData = {
+            authenticated: true,
+            token: 'rapid-admin-local',
+            user: { username: 'admin', name: 'Administrador General', role: 'SuperAdmin' },
+            timestamp: new Date().toISOString()
+          };
+          localStorage.setItem('rapid_admin_auth', JSON.stringify(authData));
+          setCurrentUser(authData.user);
+          setIsAuthenticated(true);
+          showToast('¡Bienvenido al Panel de Control de Hamburger Rapid!');
+        } else {
+          setLoginError(data.error || 'Credenciales inválidas. Recuerda que el usuario y clave son "admin".');
+        }
+      }
+    } catch (err) {
+      // Fallback if backend network issue
+      if (usernameInput === 'admin' && passwordInput === 'admin') {
+        const authData = {
+          authenticated: true,
+          token: 'rapid-admin-local',
+          user: { username: 'admin', name: 'Administrador General', role: 'SuperAdmin' },
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('rapid_admin_auth', JSON.stringify(authData));
+        setCurrentUser(authData.user);
+        setIsAuthenticated(true);
+        showToast('¡Bienvenido al Panel de Control de Hamburger Rapid!');
+      } else {
+        setLoginError('Credenciales incorrectas. Utiliza usuario: "admin" y clave: "admin".');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem('rapid_admin_auth');
+    setIsAuthenticated(false);
+    setUsernameInput('');
+    setPasswordInput('');
+    setLoginError('');
+    showToast('Sesión cerrada correctamente.');
+  };
 
   // Toggle burger availability
   const toggleAvailability = async (id, currentStatus) => {
@@ -132,6 +235,247 @@ export default function App() {
     return matchesSearch && matchesCategory;
   });
 
+  // =========================================================================
+  // VIEW 1: AUTHENTICATION FORM (LOGIN)
+  // =========================================================================
+  if (!isAuthenticated) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #f6eedb 0%, #faedd6 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        color: 'var(--text)'
+      }}>
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: '#1c1917',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: 'var(--shadow-lg)',
+            zIndex: 100,
+            fontSize: '0.88rem',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>ℹ️</span> {toastMessage}
+          </div>
+        )}
+
+        <div style={{
+          background: '#ffffff',
+          border: '1px solid var(--border)',
+          borderRadius: '28px',
+          padding: '40px 36px',
+          maxWidth: '440px',
+          width: '100%',
+          boxShadow: '0 20px 45px rgba(28, 25, 23, 0.08)',
+          textAlign: 'center'
+        }}>
+          {/* Logo & Brand Header */}
+          <div style={{
+            width: '64px',
+            height: '64px',
+            background: 'linear-gradient(135deg, #b91c1c, #991b1b)',
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2rem',
+            color: 'white',
+            margin: '0 auto 16px',
+            boxShadow: '0 8px 20px rgba(185, 28, 28, 0.28)'
+          }}>
+            🍔
+          </div>
+
+          <div style={{
+            display: 'inline-block',
+            background: '#fff7ed',
+            color: '#c2410c',
+            border: '1px solid #fed7aa',
+            padding: '3px 12px',
+            borderRadius: '999px',
+            fontSize: '0.72rem',
+            fontWeight: '800',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: '8px'
+          }}>
+            Panel de Seguridad
+          </div>
+
+          <h2 style={{ fontSize: '1.65rem', fontWeight: '900', color: '#1c1917', marginBottom: '6px' }}>
+            Hamburger Rapid
+          </h2>
+          <p style={{ color: '#78716c', fontSize: '0.88rem', marginBottom: '24px' }}>
+            Ingresa tus credenciales autorizadas para acceder a la administración.
+          </p>
+
+          {/* Error Banner */}
+          {loginError && (
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#991b1b',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              fontSize: '0.82rem',
+              fontWeight: '700',
+              marginBottom: '20px',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠️</span> {loginError}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '800', color: '#78716c', textTransform: 'uppercase', marginBottom: '6px' }}>
+                Usuario Administrador
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }}>
+                  👤
+                </span>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="admin"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 12px 11px 36px',
+                    borderRadius: '12px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.92rem',
+                    color: '#1c1917',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '800', color: '#78716c', textTransform: 'uppercase', marginBottom: '6px' }}>
+                Clave de Acceso
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#a8a29e' }}>
+                  🔒
+                </span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="admin"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 36px 11px 36px',
+                    borderRadius: '12px',
+                    border: '1.5px solid var(--border)',
+                    fontSize: '0.92rem',
+                    color: '#1c1917',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {/* Default Credentials Helper */}
+            <div style={{
+              background: '#fef3c7',
+              border: '1px solid #fde68a',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              fontSize: '0.8rem',
+              color: '#92400e',
+              lineHeight: '1.45'
+            }}>
+              <div style={{ fontWeight: '800', marginBottom: '3px' }}>🔑 Credenciales Predeterminadas:</div>
+              <div>&bull; <strong>Usuario:</strong> <code>admin</code></div>
+              <div>&bull; <strong>Clave:</strong> <code>admin</code></div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                background: 'linear-gradient(135deg, #b91c1c, #991b1b)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '13px',
+                borderRadius: '12px',
+                fontWeight: '800',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(185, 28, 28, 0.3)',
+                marginTop: '4px',
+                transition: 'transform 0.15s'
+              }}
+            >
+              {isSubmitting ? 'Verificando...' : 'Iniciar Sesión →'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+            <a
+              href="/"
+              style={{
+                color: '#78716c',
+                textDecoration: 'none',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              ← Volver al sitio web comercial
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: AUTHENTICATED ADMIN DASHBOARD
+  // =========================================================================
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
       {/* Toast Notification */}
@@ -188,6 +532,58 @@ export default function App() {
               <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#1c1917' }}>Hamburger Rapid</div>
               <div style={{ fontSize: '0.72rem', color: '#c2410c', fontWeight: '800', letterSpacing: '0.04em' }}>ADMIN DASHBOARD</div>
             </div>
+          </div>
+
+          {/* User Status Card */}
+          <div style={{
+            background: '#faf7f2',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '10px 12px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                background: '#ffedd5',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1rem'
+              }}>
+                👨💼
+              </div>
+              <div>
+                <div style={{ fontSize: '0.82rem', fontWeight: '800', color: '#1c1917' }}>
+                  {currentUser?.username || 'admin'}
+                </div>
+                <div style={{ fontSize: '0.68rem', color: '#059669', fontWeight: '700' }}>
+                  ● Autenticado
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              style={{
+                background: '#fee2e2',
+                border: 'none',
+                color: '#991b1b',
+                padding: '4px 8px',
+                borderRadius: '8px',
+                fontSize: '0.72rem',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Salir
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -289,6 +685,24 @@ export default function App() {
             >
               <span>📱</span> Abrir App Móvil PWA
             </a>
+            <button
+              onClick={handleLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.85rem',
+                color: '#991b1b',
+                background: 'none',
+                border: 'none',
+                fontWeight: '700',
+                cursor: 'pointer',
+                padding: '4px 0',
+                textAlign: 'left'
+              }}
+            >
+              <span>🚪</span> Cerrar Sesión
+            </button>
           </div>
         </div>
       </aside>
@@ -309,7 +723,7 @@ export default function App() {
               {activeTab === 'database' && 'Monitor de Conexión a Base de Datos'}
             </h1>
             <p style={{ color: '#78716c', fontSize: '0.9rem' }}>
-              Plataforma comercial en vivo con soporte multi-capa y sincronización continua.
+              Sesión activa como <strong>{currentUser?.username || 'admin'}</strong> &bull; Permisos de administración total.
             </p>
           </div>
 

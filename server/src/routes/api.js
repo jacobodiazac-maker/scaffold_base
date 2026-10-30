@@ -2,6 +2,27 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Authentication Endpoint for Admin Panel
+router.post('/auth/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'admin') {
+    return res.json({
+      success: true,
+      message: 'Autenticación exitosa',
+      token: `rapid-admin-${Date.now()}`,
+      user: {
+        username: 'admin',
+        name: 'Administrador General',
+        role: 'SuperAdmin'
+      }
+    });
+  }
+  return res.status(401).json({
+    success: false,
+    error: 'Credenciales inválidas. Verifica usuario y contraseña.'
+  });
+});
+
 // Health Check Endpoint (For Dokploy Health Checks & Admin DB Status)
 router.get('/health', (req, res) => {
   const dbStatus = db.getDbStatus();

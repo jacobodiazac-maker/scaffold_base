@@ -70,7 +70,7 @@ const BURGERS_DATA = [
     badgeType: 'indigo',
     rating: 4.9,
     prepTime: '12-15 min',
-    image: 'https://images.unsplash.com/photo-1582196016295-f8c8bd4b3e99?w=600&auto=format&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=600&auto=format&fit=crop&q=80',
     description: 'Black Angus con mantequilla de trufa negra, queso suizo Emmental, rúcula silvestre y balsámico Módena.'
   },
   {

@@ -106,7 +106,7 @@ const INITIAL_HAMBURGERS = [
     calories: '740 kcal',
     protein: '46g',
     tags: ['Trufa Negra', 'Queso Suizo', 'Alta Gama'],
-    image: 'https://images.unsplash.com/photo-1582196016295-f8c8bd4b3e99?w=700&auto=format&fit=crop&q=80',
+    image: 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=700&auto=format&fit=crop&q=80',
     description: 'Carne Angus seleccionada con emulsión de trufa negra de verano, queso suizo Emmental madurado fundido, rúcula selvática baby y glaseado balsámico de Módena envejecido.'
   },
   {
